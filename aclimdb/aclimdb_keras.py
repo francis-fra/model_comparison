@@ -64,6 +64,7 @@ def build_transfer_model(max_features, out_dimension, maxlen):
     """
     model = Sequential()
     model.add(Embedding(max_features, out_dimension, input_length=maxlen))
+    # FIXME: add flatten() before dense??
     # After the Embedding layer, our activations have shape `(samples, maxlen, 8)`.
     model.add(Dense(32, activation='relu'))
     # We flatten the 3D tensor of embeddings into a 2D tensor of shape `(samples, maxlen * 8)`
