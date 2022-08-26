@@ -373,6 +373,8 @@ def build_dense_model(trainds, validds, params, datatype_dict):
     outputs = layers.Dense(units=1, activation="sigmoid")(x)
     model = keras.Model(inputs=inputs, outputs=outputs)
 
+    print(model.summary())
+
     num_epochs = params['num_epochs']
     learning_rate = params['learning_rate']
 
@@ -430,7 +432,7 @@ if __name__ == '__main__':
     trainds = trainds.map(transform).batch(batch_size)
     validds = validds.map(transform).batch(batch_size)
 
-    build_GRU_model(trainds, validds, params, datatype_dict)
+    # build_GRU_model(trainds, validds, params, datatype_dict)
     # auc = 0.9352, acc=0.9509
-    # build_dense_model(trainds, validds, params, datatype_dict)
+    build_dense_model(trainds, validds, params, datatype_dict)
     # auc = 0.9027, acc=0.9353

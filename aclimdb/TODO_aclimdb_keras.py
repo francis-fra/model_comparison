@@ -33,6 +33,8 @@ def get_raw_data(folder, train_or_test):
     
     return (texts, labels)
 
+# TODO: https://keras.io/examples/nlp/text_classification_from_scratch/
+
 # def one_hot_encoding(texts, max_features):
 #     tokenizer = Tokenizer(num_words=max_features)
 #     tokenizer.fit_on_texts(texts)

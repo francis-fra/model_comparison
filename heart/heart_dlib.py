@@ -40,7 +40,7 @@ def load_data():
     FEATURE_NAMES = NUMERIC_FEATURE_NAMES + CATEGORICAL_FEATURE_NAMES
     # all columns
     CSV_HEADER = list(data.columns)
-    NUM_CLASSES = len(TARGET_FEATURE_LABELS)
+    # NUM_CLASSES = len(TARGET_FEATURE_LABELS)
 
     metadata = kd.MetaData(TARGET_FEATURE_NAME,
                             CSV_HEADER,
@@ -49,7 +49,8 @@ def load_data():
                             CATEGORICAL_FEATURE_NAMES,
                             FEATURE_NAMES,
                             CATEGORICAL_FEATURES_WITH_VOCABULARY,
-                            NUM_CLASSES)
+                            TARGET_FEATURE_LABELS)
+                            # NUM_CLASSES)
 
     train_ds, val_ds = kd.convert2dataset(data, metadata)
 
@@ -59,7 +60,7 @@ def build_model(metadata, params, train_ds):
     dropout_rate = params['dropout_rate']
 
     inputs = kd.create_model_inputs(metadata)
-    encoded_inputs = kd.encode_and_normalize_inputs(inputs, metadata, train_ds)
+    encoded_inputs = kd.encode_inputs(inputs, metadata)
 
     x = encoded_inputs
     x = layers.Dense(32, activation="relu")(x)
@@ -72,13 +73,11 @@ def build_model(metadata, params, train_ds):
 
 def build_test_model(metadata, params, train_ds):
     dropout_rate = params['dropout_rate']
+    use_embedding = params['use_embedding']
 
     # dictionary of input layers
-    inputs = kd.create_normalized_model_inputs(metadata)
-    # ok
-    encoded_inputs = kd.encode_and_normalize_inputs(inputs, metadata, params, train_ds)
-    # FIXME; ok to trian, trouble to evaluate model 
-    # encoded_inputs = kd.encode_and_normalize_inputs(inputs, metadata, params, train_ds, True)
+    inputs = kd.create_normalized_model_inputs(metadata, use_embedding)
+    encoded_inputs = kd.encode_and_normalize_inputs(inputs, metadata, params, train_ds, use_embedding)
 
     x = encoded_inputs
     x = layers.Dense(32, activation="relu")(x)
@@ -108,13 +107,43 @@ def build_normalized_model(metadata, params, ds):
 
     return model
 
+def test_model_performance(model, train_ds, val_ds):
+    print(model.summary())
+    model.compile("adam", "binary_crossentropy", metrics=["accuracy"])
+    model.fit(train_ds, epochs=num_epochs, validation_data=val_ds)
+    kd.evaluate_model(model, val_ds)
+
+def test_model_performance_with_cb(model, train_ds, val_ds):
+
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss", patience=5, restore_best_weights=True
+    )
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
+        loss=keras.losses.BinaryCrossentropy(),
+        metrics=[keras.metrics.BinaryAccuracy(name="accuracy")],
+    )
+    model.fit(
+        train_ds,
+        epochs=num_epochs,
+        validation_data=val_ds,
+        callbacks=[early_stopping],
+    )
+
+    kd.evaluate_model(model, val_ds)
+
+
+# normalization is very important!!
+# early stopping is also important
 if __name__ == '__main__':
     params = {
         'learning_rate' : 0.01,
         'dropout_rate' : 0.5,
         'batch_size' : 32,
-        'num_epochs' : 100,
+        'num_epochs' : 50,
         'encoding_size' : 16,
+        'use_embedding' : False
+        # 'use_embedding' : True
     }
     batch_size = params['batch_size']
 
@@ -125,30 +154,16 @@ if __name__ == '__main__':
     num_epochs = params['num_epochs']
     learning_rate = params['learning_rate']
 
-    # ok   
-    # model = build_model(metadata, params, train_ds)
-    # ok
-    model = build_test_model(metadata, params, train_ds)
-    # ok
-    # model = build_normalized_model(metadata, params, train_ds)
+    # model 1: embedding option: Y; normalization: N (as in census model)
+    # model01 = build_model(metadata, params, train_ds)
+    # test_model_performance(model01, train_ds, val_ds)
 
-    model.compile("adam", "binary_crossentropy", metrics=["accuracy"])
-    model.fit(train_ds, epochs=100, validation_data=val_ds)
-    # early_stopping = tf.keras.callbacks.EarlyStopping(
-    #     monitor="val_loss", patience=5, restore_best_weights=True
-    # )
+    # model 2: embedding option: Y; normalization: Y
+    model02 = build_test_model(metadata, params, train_ds)
+    test_model_performance(model02, train_ds, val_ds)
+    # test_model_performance_with_cb(model02, train_ds, val_ds)
 
-    # model.compile(
-    #     optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
-    #     loss=keras.losses.BinaryCrossentropy(),
-    #     metrics=[keras.metrics.BinaryAccuracy(name="accuracy")],
-    # )
+    # model 3: embedding option: N; normalization: Y (as in heart model)
+    # model03 = build_normalized_model(metadata, params, train_ds)
+    # test_model_performance(model03, train_ds, val_ds)
 
-    # model.fit(
-    #     train_ds,
-    #     epochs=num_epochs,
-    #     validation_data=val_ds,
-    #     # callbacks=[early_stopping],
-    # )
-
-    kd.evaluate_model(model, val_ds)
